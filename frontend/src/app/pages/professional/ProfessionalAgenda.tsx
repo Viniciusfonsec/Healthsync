@@ -1,6 +1,6 @@
 import { capitalizeFirst } from '../../lib/format';
 import { useErrorToast } from '../../lib/notify';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, Clock, UserRound, ChevronLeft, ChevronRight, RefreshCw, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
@@ -57,28 +57,32 @@ export function ProfessionalAgenda() {
   const [error, setError] = useState('');
   useErrorToast(error);
 
-  async function loadAgenda(dateValue = selectedDate) {
-    setLoading(true);
-    setError('');
+  const loadAgenda = useCallback(
+    async (dateValue: string = selectedDate) => {
+      setLoading(true);
+      setError('');
 
-    try {
-      const day = new Date(`${dateValue}T12:00:00`);
+      try {
+        const day = new Date(`${dateValue}T12:00:00`);
 
-      const response = await professionalApi.agenda(startOfSelectedDay(day), endOfSelectedDay(day));
+        const response = await professionalApi.agenda(startOfSelectedDay(day), endOfSelectedDay(day));
 
-      setAppointments(response.data ?? []);
-    } catch (err) {
-      setAppointments([]);
+        setAppointments(response.data ?? []);
+      } catch (err) {
+        setAppointments([]);
 
-      setError(err instanceof ApiError ? err.message : 'Não foi possível carregar a agenda.');
-    } finally {
-      setLoading(false);
-    }
-  }
+        setError(err instanceof ApiError ? err.message : 'Não foi possível carregar a agenda.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedDate],
+  );
 
+  // Recarrega ao trocar a data ou a unidade de trabalho.
   useEffect(() => {
     void loadAgenda();
-  }, [selectedDate, user?.clinicId]);
+  }, [loadAgenda, user?.clinicId]);
 
   const orderedAppointments = useMemo(
     () => [...appointments].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()),

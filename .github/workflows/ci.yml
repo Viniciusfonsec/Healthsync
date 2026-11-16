@@ -65,10 +65,15 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run test:db
+      # Num banco novo e vazio: o test:db recria o banco de testes aplicando o SQL das migrações
+      # diretamente, sem a tabela de controle do Prisma, e o migrate deploy recusaria o banco já preenchido.
       - name: Migrações aplicam do zero com o Prisma
-        run: npx prisma migrate deploy
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE healthsync_migrate"
+          npx prisma migrate deploy
+          npx prisma migrate status
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync_migrate
 
   frontend:
     name: Frontend (tipagem, testes e build)

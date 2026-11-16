@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import {
   isClinicSelectionChallenge,
   login as loginRequest,
@@ -142,20 +142,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLocalSession();
   }
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      session,
-      user: session?.user ?? null,
-      isAuthenticated: Boolean(session?.user),
-      pendingProfessionalLogin,
-      login,
-      selectProfessionalClinic,
-      switchProfessionalClinic,
-      refreshUser,
-      logout,
-    }),
-    [session, pendingProfessionalLogin],
-  );
+  // As funções acima leem o estado atual (sessão e escolha de unidade); o valor é montado a cada
+  // renderização do provedor, que só acontece quando esse estado muda.
+  const value: AuthContextValue = {
+    session,
+    user: session?.user ?? null,
+    isAuthenticated: Boolean(session?.user),
+    pendingProfessionalLogin,
+    login,
+    selectProfessionalClinic,
+    switchProfessionalClinic,
+    refreshUser,
+    logout,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

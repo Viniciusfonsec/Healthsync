@@ -196,9 +196,12 @@ export function MainLayout({ role }: MainLayoutProps) {
     ],
   };
 
+  const userEmail = user?.email;
+
+  // Atualiza o contador de notificações não lidas (a cada 30 s e ao voltar para a aba).
   useEffect(() => {
     let cancelled = false;
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !userEmail) {
       setUnreadNotifications(0);
       return () => {
         cancelled = true;
@@ -229,7 +232,7 @@ export function MainLayout({ role }: MainLayoutProps) {
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isAuthenticated, user?.email, location.pathname]);
+  }, [isAuthenticated, userEmail, location.pathname]);
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
