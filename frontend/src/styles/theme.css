@@ -1,0 +1,33 @@
+@theme {
+  --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  /* Cor da marca: verde petróleo da tela inicial (#234B65). Use primary ou a escala brand-*. */
+  --color-primary: #234b65;
+  --color-primary-hover: #183b50;
+  --color-brand-50: #f2f6f8;
+  --color-brand-100: #e3ecf1;
+  --color-brand-200: #c6d7e1;
+  --color-brand-300: #9dbaca;
+  --color-brand-400: #6e95aa;
+  --color-brand-500: #47758b;
+  --color-brand-600: #234b65;
+  --color-brand-700: #183b50;
+  --color-brand-800: #143246;
+  --color-brand-900: #0f2636;
+  --color-brand-950: #0a1a25;
+  --color-secondary: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --radius-xl: 12px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+}

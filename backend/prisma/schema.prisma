@@ -1,0 +1,396 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PACIENTE
+  PROFISSIONAL
+  ADMINISTRADOR
+  ADMIN_MASTER
+}
+
+enum AppointmentStatus {
+  AGENDADA
+  CONFIRMADA
+  REALIZADA
+  CANCELADA
+  FALTA
+}
+
+enum AppointmentType {
+  PRESENCIAL
+  TELEMEDICINA
+}
+
+enum AttendanceStatus {
+  ABERTO
+  EM_ANDAMENTO
+  FINALIZADO
+  CANCELADO
+}
+
+enum PatientPriority {
+  IDOSO
+  GESTANTE
+  PESSOA_COM_DEFICIENCIA
+}
+
+enum NotificationType {
+  CONSULTA
+  LEMBRETE
+  RESULTADO
+  SISTEMA
+  MENSAGEM
+}
+
+enum CommunicationChannel {
+  WHATSAPP
+  EMAIL
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDENTE
+  ENVIADO
+  ERRO
+  CANCELADO
+}
+
+enum DocumentType {
+  EXAME
+  DOCUMENTO
+  PRESCRICAO
+  OUTRO
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  CANCEL
+  RESCHEDULE
+  CONFIRM
+  UPLOAD
+  STATUS_CHANGE
+}
+
+model Clinic {
+  id                Int             @id @default(autoincrement())
+  name              String             @unique
+  document          String?
+  phone             String?
+  email             String?
+  address           Json?
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  users             User[]
+  patientClinics    PatientClinic[]
+  professionals     Professional[]
+  professionalClinics ProfessionalClinic[]
+  specialties       Specialty[]
+  appointments      Appointment[]
+
+  @@index([active])
+}
+
+model User {
+  id                   Int          @id @default(autoincrement())
+  clinicId             Int
+  role                 Role
+  email                String
+  passwordHash         String
+  active               Boolean         @default(true)
+  isGuest              Boolean         @default(false)
+  failedLoginAttempts  Int             @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  clinic               Clinic          @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient              Patient?
+  professional         Professional?
+  administrator        Administrator?
+  auditLogs            AuditLog[]
+  uploadedDocuments    Document[]
+  notifications        Notification[]
+
+  @@unique([clinicId, email])
+  @@index([email])
+  @@index([clinicId, role])
+}
+
+model Patient {
+  id                Int          @id @default(autoincrement())
+  userId            Int          @unique
+  name              String
+  email             String
+  phone             String
+  cpf               String          @unique
+  birthDate         String
+  gender            String
+  bloodType         String?
+  plan              String?
+  priorities        PatientPriority[] @default([])
+  address           Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  patientClinics    PatientClinic[]
+  appointments      Appointment[]
+  documents         Document[]
+  notifications     Notification[]
+}
+
+model PatientClinic {
+  id         Int   @id @default(autoincrement())
+  patientId  Int
+  clinicId   Int
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, clinicId])
+  @@index([clinicId, active])
+}
+
+model Professional {
+  id                           Int                 @id @default(autoincrement())
+  userId                       Int                 @unique
+  clinicId                     Int
+  name                         String
+  email                        String
+  phone                        String
+  crm                          String                 @unique
+  active                       Boolean                @default(true)
+  consultationDurationMinutes  Int                    @default(30)
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+  user                         User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  clinic                       Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  clinicMemberships            ProfessionalClinic[]
+  specialties                  ProfessionalSpecialty[]
+  appointments                 Appointment[]
+  availabilities               AvailabilitySlot[]
+  blocks                       AgendaBlock[]
+  attendances                  Attendance[]
+
+  @@index([clinicId, active])
+}
+
+model ProfessionalClinic {
+  id             Int       @id @default(autoincrement())
+  professionalId Int
+  clinicId       Int
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  clinic         Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, clinicId])
+  @@index([clinicId, active])
+}
+
+model Administrator {
+  id         Int   @id @default(autoincrement())
+  userId     Int   @unique
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model Specialty {
+  id             Int                  @id @default(autoincrement())
+  clinicId       Int
+  name           String
+  description    String?
+  icon           String?
+  avgMinutes     Int                     @default(30)
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  clinic         Clinic                  @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  professionals  ProfessionalSpecialty[]
+  appointments   Appointment[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, active])
+}
+
+model ProfessionalSpecialty {
+  professionalId  Int
+  specialtyId     Int
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  specialty      Specialty    @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@id([professionalId, specialtyId])
+  @@index([specialtyId])
+}
+
+model Appointment {
+  id                  Int            @id @default(autoincrement())
+  clinicId            Int
+  patientId           Int
+  professionalId      Int
+  specialtyId         Int
+  dateTime            DateTime
+  durationMinutes     Int
+  insuranceUsed       Boolean          @default(false)
+  insuranceProvider   String?
+  insuranceMemberNumber String?
+  type                AppointmentType
+  location            String
+  status              AppointmentStatus @default(AGENDADA)
+  teleconsultationUrl String?
+  notes               String?
+  cancellationReason  String?
+  confirmedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  clinic              Clinic            @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient             Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  professional        Professional      @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  specialty           Specialty         @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  attendance          Attendance?
+  notifications       Notification[]
+
+  // Horário único só entre consultas ativas: índice parcial
+  // "Appointment_professionalId_dateTime_active_key" (migration 20261115120000_appointment_active_slot).
+  @@index([patientId, dateTime])
+  @@index([professionalId, dateTime])
+  @@index([clinicId, dateTime])
+  @@index([status])
+}
+
+model AvailabilitySlot {
+  id               Int       @id @default(autoincrement())
+  professionalId   Int
+  dayOfWeek        Int
+  startTime        String
+  endTime          String
+  durationMinutes  Int
+  active            Boolean      @default(true)
+  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, dayOfWeek, startTime, endTime])
+  @@index([professionalId, dayOfWeek, active])
+}
+
+model AgendaBlock {
+  id               Int       @id @default(autoincrement())
+  professionalId   Int
+  startsAt         DateTime
+  endsAt           DateTime
+  reason           String
+  active           Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId, startsAt, endsAt])
+}
+
+model Attendance {
+  id             Int           @id @default(autoincrement())
+  appointmentId  Int           @unique
+  professionalId Int
+  status         AttendanceStatus @default(ABERTO)
+  notes          String?
+  diagnosis      String?
+  prescription   String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  appointment    Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  professional   Professional      @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  documents      Document[]
+
+  @@index([professionalId, createdAt])
+}
+
+model Document {
+  id           Int       @id @default(autoincrement())
+  attendanceId Int
+  patientId    Int
+  uploadedBy   Int
+  originalName String
+  mimeType     String
+  size         Int
+  type         DocumentType
+  iv           String
+  authTag      String
+  storagePath  String
+  createdAt    DateTime     @default(now())
+  attendance   Attendance   @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  uploader     User         @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@unique([attendanceId, originalName])
+  @@index([patientId])
+  @@index([attendanceId])
+}
+
+model Notification {
+  id            Int                  @id @default(autoincrement())
+  patientId     Int?
+  userId        Int?
+  appointmentId Int?
+  type          NotificationType
+  channel       CommunicationChannel
+  content       String
+  status        NotificationStatus   @default(PENDENTE)
+  readAt        DateTime?
+  sentAt        DateTime?
+  attempts      Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  appointment   Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  patient       Patient?             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user          User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?
+  action      AuditAction
+  resource    String
+  resourceId  Int?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  actor       User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([resource, createdAt])
+}
+
+model SystemSettings {
+  id                     Int @id
+  systemName             String
+  timezone               String
+  language               String
+  dateFormat             String
+  sessionTimeoutMinutes  Int
+  logRetentionDays       Int
+  minPasswordLength      Int
+  mfaRequired            Boolean
+  primaryColor           String
+  theme                  String
+  compactMode            Boolean
+  smtp                   Json
+  updatedAt              DateTime @updatedAt
+}

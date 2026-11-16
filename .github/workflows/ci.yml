@@ -1,0 +1,164 @@
+# Verificação automática a cada push e pull request:
+# tipagem, testes (memória e PostgreSQL), builds, estilo, testes no navegador e imagens Docker.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+
+jobs:
+  backend:
+    name: Backend (tipagem, testes e build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma validate
+      - run: npx prisma generate
+      - run: npm run lint:typecheck
+      - run: npm test
+      - run: npm run build
+
+  backend-db:
+    name: Backend com PostgreSQL de verdade
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: healthsync_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run test:db
+      - name: Migrações aplicam do zero com o Prisma
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthsync_test
+
+  frontend:
+    name: Frontend (tipagem, testes e build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc -p tsconfig.json --noEmit
+      - run: npm test
+      - run: npm run build
+
+  estilo:
+    name: Formatação (Prettier) e ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Formatação do backend
+        working-directory: backend
+        run: npm run format:check
+      - name: Formatação do frontend
+        working-directory: frontend
+        run: npm run format:check
+      - name: ESLint do backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm install --no-save eslint@9 @eslint/js@9 typescript-eslint@8
+          npx prisma generate
+          npx eslint .
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      - name: ESLint do frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm install --no-save eslint@9 @eslint/js@9 typescript-eslint@8 eslint-plugin-react-hooks@5 globals@15
+          npx eslint .
+
+  e2e:
+    name: Testes no navegador (Playwright)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Instala backend, frontend e Playwright
+        run: |
+          (cd backend && npm ci && DATABASE_URL=postgresql://ci:ci@localhost:5432/ci npx prisma generate)
+          (cd frontend && npm ci)
+          (cd e2e && npm install && npx playwright install --with-deps chromium)
+      - name: Roda os testes (sobe backend em memória e frontend sozinho)
+        working-directory: e2e
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: relatorio-playwright
+          path: e2e/playwright-report
+          retention-days: 7
+
+  docker:
+    name: Imagens Docker
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - name: Sobe tudo e testa login pelo nginx
+        run: |
+          docker compose up -d
+          for i in $(seq 1 60); do curl -sf http://localhost:8080/health && break; sleep 2; done
+          curl -sf http://localhost:8080/ | grep -q '<div id="root">'
+          curl -sf -X POST http://localhost:8080/api/v1/auth/login \
+            -H 'content-type: application/json' \
+            -d '{"email":"admin@healthsync.local","password":"ChangeMe123!"}' -o /dev/null
+      - if: always()
+        run: docker compose logs --no-color | tail -100
+      - if: always()
+        run: docker compose down -v

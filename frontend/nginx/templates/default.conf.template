@@ -1,0 +1,43 @@
+# BACKEND_URL vem da variável de ambiente (padrão http://backend:3333, o serviço do docker-compose).
+# Site (React) e API no MESMO endereço: o cookie de sessão é SameSite=Strict e não precisa de CORS.
+server {
+  listen ${PORT};
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # Anexos de até 10 MB (com folga para o multipart)
+  client_max_body_size 12m;
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy strict-origin-when-cross-origin always;
+  add_header X-Frame-Options DENY always;
+
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+
+  # API, verificação de saúde e Swagger vão para o backend
+  location ~ ^/(api|health|docs)(/|$) {
+    proxy_pass ${BACKEND_URL};
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host $proxy_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+  }
+
+  # Arquivos com hash no nome podem ficar em cache por muito tempo
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+  }
+
+  # Rotas do React (/login, /patient/...) sempre abrem o index.html
+  location / {
+    add_header Cache-Control "no-cache";
+    try_files $uri $uri/ /index.html;
+  }
+}

@@ -1,0 +1,25 @@
+# Node
+node_modules/
+dist/
+coverage/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Application runtime data
+backend/storage/documents/*
+!backend/storage/documents/.gitkeep
+
+# Prisma: cliente gerado por `npm run prisma:generate`
+backend/src/generated/
+
+# Prisma local artifacts
+backend/prisma/dev.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

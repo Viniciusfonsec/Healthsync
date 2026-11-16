@@ -1,0 +1,130 @@
+/*
+ * Padrão único de botões do HealthSync.
+ * Use: <button className="btn btn-primary">, "btn btn-secondary", "btn btn-danger",
+ * "btn btn-success" e "btn btn-ghost". Adicione "btn-sm" para botões compactos.
+ * Utilitários do Tailwind (w-full, mt-4, flex-1...) continuam funcionando junto.
+ */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 2px;
+  }
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-sm {
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: #fff;
+    border-color: #e2e8f0;
+    color: #334155;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .btn-danger {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: #fee2e2;
+  }
+
+  .btn-success {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+  }
+  .btn-success:hover:not(:disabled) {
+    background-color: #d1fae5;
+  }
+
+  /* Botão claro (ações secundárias e links de navegação): fundo e borda suaves na cor da marca. */
+  .btn-ghost {
+    background-color: var(--color-brand-50);
+    border-color: var(--color-brand-200);
+    color: var(--color-primary);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-brand-100);
+    border-color: var(--color-primary);
+  }
+  /* Rótulo de ação dentro de um cartão clicável: aparência de botão, sem ser outro botão. */
+  .card-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-brand-200);
+    border-radius: 0.625rem;
+    background-color: var(--color-brand-50);
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .group:hover .card-action,
+  button:hover > .card-action,
+  a:hover > .card-action {
+    background-color: var(--color-brand-100);
+    border-color: var(--color-primary);
+  }
+}
+
+@layer components {
+  .btn-danger-solid {
+    background-color: #dc2626;
+    color: #fff;
+  }
+  .btn-danger-solid:hover:not(:disabled) {
+    background-color: #b91c1c;
+  }
+
+  .btn-success-solid {
+    background-color: #059669;
+    color: #fff;
+  }
+  .btn-success-solid:hover:not(:disabled) {
+    background-color: #047857;
+  }
+}

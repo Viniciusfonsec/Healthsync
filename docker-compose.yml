@@ -1,0 +1,58 @@
+# Sobe o HealthSync completo: PostgreSQL + migrações + backend + site.
+#   docker compose up --build        →  http://localhost:8080  (API e Swagger em /api/v1 e /docs)
+# Contas de demonstração: veja o README (senha padrão ChangeMe123!).
+name: healthsync
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: healthsync
+      POSTGRES_USER: healthsync
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-healthsync}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthsync -d healthsync"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    # Aplica as migrações pendentes ao iniciar e depois sobe a API.
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://healthsync:${POSTGRES_PASSWORD:-healthsync}@db:5432/healthsync
+      # Troque as duas chaves fora da sua máquina (mínimo 16 caracteres). Com as de exemplo o servidor não sobe.
+      JWT_SECRET: ${JWT_SECRET:-docker-local-jwt-secret-0001}
+      DOCUMENT_ENCRYPTION_KEY: ${DOCUMENT_ENCRYPTION_KEY:-docker-local-document-key-01}
+      SEED_PASSWORD: ${SEED_PASSWORD:-ChangeMe123!}
+      CORS_ORIGIN: ${PUBLIC_URL:-http://localhost:8080}
+      TRUST_PROXY: "true"
+      # http://localhost funciona com cookie seguro nos navegadores atuais; em outro endereço sem HTTPS, use false.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      STORAGE_DIR: /app/storage/documents
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    volumes:
+      - documents:/app/storage/documents
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${HEALTHSYNC_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  documents:
