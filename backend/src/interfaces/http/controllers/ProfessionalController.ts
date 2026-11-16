@@ -157,7 +157,7 @@ export class ProfessionalController extends BaseController {
     const professional = await this.professionalFromUser(req);
     const actor = req.user as AuthUser;
     const result = await this.documents.downloadForProfessional(id, professional.id, actor.clinicId);
-    const safeName = result.document.originalName.replace(/[\r\n\"\\]/g, '_');
+    const safeName = result.document.originalName.replace(/[\r\n"\\]/g, '_');
     return reply
       .type(result.document.mimeType)
       .header('Content-Disposition', `attachment; filename="${safeName}"`)

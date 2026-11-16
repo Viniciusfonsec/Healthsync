@@ -1,5 +1,6 @@
 import { notFound } from '../../domain/errors/DomainError.js';
 import type {
+  Address,
   Administrator,
   AgendaBlock,
   Appointment,
@@ -81,8 +82,9 @@ function iso(value: Date | string | null | undefined): string | undefined {
   return value instanceof Date ? value.toISOString() : value;
 }
 
-function address(value: unknown): any {
-  return value ?? undefined;
+/** Endereço gravado como JSON no banco. */
+function address(value: unknown): Address | undefined {
+  return (value ?? undefined) as Address | undefined;
 }
 
 function clinicFromRow(row: ClinicRow): Clinic {

@@ -2,6 +2,8 @@ node_modules/
 dist/
 .env
 coverage/
-storage/documents/*
-!storage/documents/.gitkeep
-storage/
+
+# Anexos enviados pelos usuários (só a pasta fica no repositório).
+# A barra no início vale só para backend/storage, não para src/infrastructure/storage (código).
+/storage/documents/*
+!/storage/documents/.gitkeep

@@ -140,7 +140,7 @@ export class PatientController extends BaseController {
   async downloadPatientDocument(req: FastifyRequest, reply: FastifyReply) {
     const { id } = parse(idParam, req.params);
     const result = await this.documents.downloadForPatient(id, await this.patientId(req));
-    const safeName = result.document.originalName.replace(/[\r\n\"\\]/g, '_');
+    const safeName = result.document.originalName.replace(/[\r\n"\\]/g, '_');
     return reply
       .type(result.document.mimeType)
       .header('Content-Disposition', `attachment; filename="${safeName}"`)
